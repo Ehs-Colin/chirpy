@@ -10,20 +10,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type userParameters struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
-}
-
-type userReturn struct {
+type User struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Password  string    `json:"-"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+	type userParameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	type response struct {
+		User
+	}
 	decoder := json.NewDecoder(r.Body)
 	params := userParameters{}
 	err := decoder.Decode(&params)
@@ -45,11 +47,12 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		respondWithError(w, http.StatusInternalServerError, "Could not create user", err)
 		return
 	}
-	userReturn := userReturn{
-		ID:        databaseUser.ID,
-		CreatedAt: databaseUser.CreatedAt,
-		UpdatedAt: databaseUser.UpdatedAt,
-		Email:     databaseUser.Email,
-	}
-	respondWithJSON(w, http.StatusCreated, userReturn)
+	respondWithJSON(w, http.StatusCreated, response{
+		User: User{
+			ID:        databaseUser.ID,
+			CreatedAt: databaseUser.CreatedAt,
+			UpdatedAt: databaseUser.UpdatedAt,
+			Email:     databaseUser.Email,
+		},
+	})
 }

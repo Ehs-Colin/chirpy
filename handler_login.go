@@ -6,25 +6,19 @@ import (
 	"time"
 
 	"github.com/Ehs-Colin/chirpy/internal/auth"
-	"github.com/google/uuid"
 )
 
-type loginParameters struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
-}
-
-type loginReturn struct {
-	ID           uuid.UUID `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Email        string    `json:"email"`
-	Token        string    `json:"token"`
-	RefreshToken string    `json:"refresh_token"`
-}
-
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	type loginParameters struct {
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds int    `json:"expires_in_seconds"`
+	}
+	type response struct {
+		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
+	}
 	decoder := json.NewDecoder(r.Body)
 	params := loginParameters{}
 	err := decoder.Decode(&params)
@@ -53,18 +47,19 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	if expiresInSeconds <= 0 || expiresInSeconds > 3600 {
 		expiresInSeconds = 3600
 	}
-	token, err := auth.MakeJWT(databaseUser.ID, cfg.secret, time.Duration(expiresInSeconds*int(time.Second)))
+	token, err := auth.MakeJWT(databaseUser.ID, cfg.jwtSecret, time.Duration(expiresInSeconds*int(time.Second)))
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error creating token", err)
 		return
 	}
 
-	userReturn := loginReturn{
-		ID:        databaseUser.ID,
-		CreatedAt: databaseUser.CreatedAt,
-		UpdatedAt: databaseUser.UpdatedAt,
-		Email:     databaseUser.Email,
-		Token:     token,
-	}
-	respondWithJSON(w, http.StatusOK, userReturn)
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:        databaseUser.ID,
+			CreatedAt: databaseUser.CreatedAt,
+			UpdatedAt: databaseUser.UpdatedAt,
+			Email:     databaseUser.Email,
+		},
+		Token: token,
+	})
 }
