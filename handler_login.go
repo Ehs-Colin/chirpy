@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/Ehs-Colin/chirpy/internal/auth"
+	"github.com/Ehs-Colin/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type loginParameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type response struct {
 		User
@@ -23,7 +23,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	params := loginParameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode create user parameters", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to decode create user parameters", err)
 		return
 	}
 
@@ -43,23 +43,29 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresInSeconds := params.ExpiresInSeconds
-	if expiresInSeconds <= 0 || expiresInSeconds > 3600 {
-		expiresInSeconds = 3600
-	}
-	token, err := auth.MakeJWT(databaseUser.ID, cfg.jwtSecret, time.Duration(expiresInSeconds*int(time.Second)))
+	accessToken, err := auth.MakeJWT(databaseUser.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error creating token", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to create access JWT", err)
+		return
+	}
+	refreshToken := auth.MakeRefreshToken()
+	tokenParams := database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    databaseUser.ID,
+		ExpiresAt: time.Now().Add(time.Duration(time.Hour * 24 * 60)),
+	}
+	_, err = cfg.db.CreateRefreshToken(r.Context(), tokenParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to save refresh token", err)
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, response{
-		User: User{
-			ID:        databaseUser.ID,
-			CreatedAt: databaseUser.CreatedAt,
-			UpdatedAt: databaseUser.UpdatedAt,
-			Email:     databaseUser.Email,
-		},
-		Token: token,
+		ID:           databaseUser.ID,
+		CreatedAt:    databaseUser.CreatedAt,
+		UpdatedAt:    databaseUser.UpdatedAt,
+		Email:        databaseUser.Email,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
 	})
 }
