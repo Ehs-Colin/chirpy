@@ -45,5 +45,5 @@ func (cfg *apiConfig) handlerChirpsSelectById(w http.ResponseWriter, r *http.Req
 		Body:      dbChirp.Body,
 		UserId:    dbChirp.UserID,
 	}
-	respondWithJSON(w, http.StatusMethodNotAllowed, returnChirp)
+	respondWithJSON(w, http.StatusOK, returnChirp)
 }

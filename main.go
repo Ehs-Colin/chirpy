@@ -53,11 +53,14 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fileServer)))
-	//API handles
+	//System API handles
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
+
+	//Chirp API handles
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsSelectAll)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsSelectById)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerChirpsDelete)
 
 	//User and Login API handles
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
