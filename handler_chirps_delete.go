@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Ehs-Colin/chirpy/internal/auth"
-	"github.com/Ehs-Colin/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -35,19 +33,14 @@ func (cfg *apiConfig) handlerChirpsDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 	//4> Verify user owns the chirp (This may be redundant with SQL query update?!)
-	fmt.Printf("dbChirp Id: %s\n", dbChirp.UserID.String())
-	fmt.Printf("userId: %s\n", userId.String())
 	if dbChirp.UserID != userId {
 		respondWithError(w, http.StatusForbidden, "Unauthorized deletion attempt", nil)
 		return
 	}
 	//5> Delete the chirp from the database
-	err = cfg.db.DeleteChirp(r.Context(), database.DeleteChirpParams{
-		UserID: userId,
-		ID:     dbChirp.ID,
-	})
+	err = cfg.db.DeleteChirp(r.Context(), chirpId)
 	if err != nil {
-		respondWithError(w, http.StatusForbidden, "Unauthorized deletion attempt", nil)
+		respondWithError(w, http.StatusInternalServerError, "Unable to delete chirp", nil)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
