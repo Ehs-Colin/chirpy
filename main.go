@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaKey       string
 }
 
 func main() {
@@ -37,6 +38,10 @@ func main() {
 	if secret == "" {
 		log.Fatal("SECRET must be set")
 	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("POLKA KEY must be set")
+	}
 
 	dbConn, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -50,6 +55,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		jwtSecret:      secret,
+		polkaKey:       polkaKey,
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(fileServer)))
@@ -57,7 +63,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 
 	//Chirp API handles
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsSelectAll)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGet)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsSelectById)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerChirpsDelete)

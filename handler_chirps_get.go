@@ -3,16 +3,36 @@ package main
 import (
 	"net/http"
 
+	"github.com/Ehs-Colin/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handlerChirpsSelectAll(w http.ResponseWriter, r *http.Request) {
-	returnChirps := []Chirp{}
-	dbChirps, err := cfg.db.GetChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't retreive chirps", err)
-		return
+func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
+	var dbChirps []database.Chirp
+	var err error
+	authorId := r.URL.Query().Get("author_id")
+
+	// 1> Get select chirps.  If author is provided, only select that authors chirps
+	if authorId == "" {
+		dbChirps, err = cfg.db.GetChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't retreive chirps", err)
+			return
+		}
+	} else {
+		authorUUID, err := uuid.Parse(authorId)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author id", err)
+			return
+		}
+		dbChirps, err = cfg.db.GetChirpsByAuthor(r.Context(), authorUUID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't retreive chirps", err)
+			return
+		}
 	}
+	// 3> Add selected Chirps to Chirp struct list
+	returnChirps := []Chirp{}
 	for _, dbChirp := range dbChirps {
 		returnChirps = append(returnChirps, Chirp{
 			ID:        dbChirp.ID,
@@ -22,7 +42,7 @@ func (cfg *apiConfig) handlerChirpsSelectAll(w http.ResponseWriter, r *http.Requ
 			UserId:    dbChirp.UserID,
 		})
 	}
-
+	// 4> Return Chirps
 	respondWithJSON(w, http.StatusOK, returnChirps)
 }
 

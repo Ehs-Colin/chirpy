@@ -28,6 +28,7 @@ RETURNING *;
 
 -- name: UpdateUserSetChirpyRed :one
 UPDATE users
-SET is_chirpy_red = $2
+SET is_chirpy_red = $2,
+    updated_at = NOW()
 where id = $1
 RETURNING *;
